@@ -8,9 +8,9 @@ namespace AiAgentsChat.Api.Controllers
     public class AiController : ControllerBase
     {
         private AiAgentService _aiAgentService;
-        public AiController()
+        public AiController(AiAgentService aiAgentService)
         {
-            _aiAgentService = new AiAgentService();
+            _aiAgentService = aiAgentService;
         }
         [HttpPost("PostApiPrompt")]
         public async Task<IActionResult> PostApiPrompt(string prompt)

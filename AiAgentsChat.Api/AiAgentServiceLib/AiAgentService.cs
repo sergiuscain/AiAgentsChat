@@ -16,16 +16,7 @@ public class AiAgentService
     string startPrompt = "Ты полезный AI-ассистент, который запоминает контекст разговора и общается с другими полезными AI-ассистентами и разработчиком, который создает приложение с использованием AI-ассистентов.";
     public AiAgentService()
     {
-        _openAIClient = new OpenAIClient(new ApiKeyCredential(apiKey), new OpenAIClientOptions()
-        {
-            Endpoint = new Uri(serverUrl)
-        });
-        _chatClient = _openAIClient.GetChatClient(modelName);
-
-        _conversationHistory = new List<ChatMessage>
-        {
-            new SystemChatMessage(startPrompt)
-        };
+        Init();
     }
     /// <summary>
     /// Метод отправляет ваш запрос Ai ассистенту и возвращает ответ,
@@ -70,5 +61,21 @@ public class AiAgentService
     public List<ChatMessage> GetConversationHistory()
     {
         return [.. _conversationHistory];
+    }
+    /// <summary>
+    /// Задает настройки по умолчанию
+    /// </summary>
+    public void Init()
+    {
+        _openAIClient = new OpenAIClient(new ApiKeyCredential(apiKey), new OpenAIClientOptions()
+        {
+            Endpoint = new Uri(serverUrl)
+        });
+        _chatClient = _openAIClient.GetChatClient(modelName);
+
+        _conversationHistory = new List<ChatMessage>
+        {
+            new SystemChatMessage(startPrompt)
+        };
     }
 }
