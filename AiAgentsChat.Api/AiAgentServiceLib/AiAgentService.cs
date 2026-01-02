@@ -5,18 +5,15 @@ using System.ClientModel;
 namespace AiAgentServiceLib;
 public class AiAgentService
 {
-    string modelName = "openai/gpt-oss-20b"; // Например, "openai/gpt-oss-20b"[citation:6]
-    string serverUrl = "http://localhost:1234/v1"; // Базовый URL LM Studio[citation:7]
-    string apiKey = "not-needed"; // Для LM Studio ключ не требуется, но поле обязательно[citation:7]
     private OpenAIClient _openAIClient;
     private ChatClient _chatClient;
     private List<ChatMessage> _conversationHistory;
 
     //
-    string startPrompt = "Ты полезный AI-ассистент, который запоминает контекст разговора и общается с другими полезными AI-ассистентами и разработчиком, который создает приложение с использованием AI-ассистентов.";
-    public AiAgentService()
+    
+    public AiAgentService(string name, string apiKey, string serverUrl, string modelName, string startPrompt)
     {
-        Init();
+        Init(name, apiKey, serverUrl, modelName, startPrompt);
     }
     /// <summary>
     /// Метод отправляет ваш запрос Ai ассистенту и возвращает ответ,
@@ -52,7 +49,7 @@ public class AiAgentService
     public void ClearConversationHistory()
     {
         _conversationHistory.Clear();
-        _conversationHistory.Add(new SystemChatMessage(startPrompt));
+        _conversationHistory.Add(new SystemChatMessage(Constants.StartPrompt));
     }
     /// <summary>
     /// Возвращает историю сообщений (контекст)
@@ -65,7 +62,7 @@ public class AiAgentService
     /// <summary>
     /// Задает настройки по умолчанию
     /// </summary>
-    public void Init()
+    public void Init(string name ,string apiKey, string serverUrl, string modelName, string startPrompt)
     {
         _openAIClient = new OpenAIClient(new ApiKeyCredential(apiKey), new OpenAIClientOptions()
         {
@@ -75,7 +72,7 @@ public class AiAgentService
 
         _conversationHistory = new List<ChatMessage>
         {
-            new SystemChatMessage(startPrompt)
+            new SystemChatMessage(startPrompt + string.Format(Constants.NamePrompt, name))
         };
     }
 }

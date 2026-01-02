@@ -7,19 +7,24 @@ namespace AiAgentsChat.Api.Controllers
     [ApiController]
     public class AiController : ControllerBase
     {
-        private AiAgentService _aiAgentService;
-        public AiController(AiAgentService aiAgentService)
+        private AiAgentsFabric _aiAgentsFabric;
+        public AiController(AiAgentsFabric aiAgentsFabric)
         {
-            _aiAgentService = aiAgentService;
+            _aiAgentsFabric = aiAgentsFabric;
         }
         [HttpPost("PostApiPrompt")]
-        public async Task<IActionResult> PostApiPrompt(string prompt)
+        public async Task<IActionResult> PostApiPromptAsync(string prompt, string AiAgentName)
         {
            
-           var result = await _aiAgentService.PostPromptAsync(prompt);
+           var result = await _aiAgentsFabric.PostPromptAsync(prompt, AiAgentName);
             if (result != null) 
                 return Ok(result);
             return BadRequest("Ошибка отправке запроса");
+        }
+        [HttpPost("CreateAiAgent")]
+        public bool CreateAgent(string AiAgentName)
+        {
+            return _aiAgentsFabric.CreateAgent(AiAgentName);
         }
     }
 }
