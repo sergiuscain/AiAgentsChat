@@ -2,8 +2,8 @@
 using OpenAI.Chat;
 using System.ClientModel;
 
-namespace AiAgentServiceLib;
-public class AiAgentService
+namespace AiAgentServiceLib.Agent;
+public class AiAgent
 {
     private OpenAIClient _openAIClient;
     private ChatClient _chatClient;
@@ -11,7 +11,7 @@ public class AiAgentService
 
     //
     
-    public AiAgentService(string name, string apiKey, string serverUrl, string modelName, string startPrompt)
+    public AiAgent(string name, string apiKey, string serverUrl, string modelName, string startPrompt)
     {
         Init(name, apiKey, serverUrl, modelName, startPrompt);
     }
@@ -22,7 +22,7 @@ public class AiAgentService
     /// </summary>
     /// <param name="prompt">Ваш запрос</param>
     /// <returns></returns>
-    public async Task<string> PostPromptAsync(string prompt)
+    internal async Task<string> PostPromptAsync(string prompt)
     {
         _conversationHistory.Add(new UserChatMessage(prompt));
         try
@@ -46,7 +46,7 @@ public class AiAgentService
     /// <summary>
     /// Очищает контекст (историю сообщений)
     /// </summary>
-    public void ClearConversationHistory()
+    internal void ClearConversationHistory()
     {
         _conversationHistory.Clear();
         _conversationHistory.Add(new SystemChatMessage(Constants.StartPrompt));
@@ -62,7 +62,7 @@ public class AiAgentService
     /// <summary>
     /// Задает настройки по умолчанию
     /// </summary>
-    public void Init(string name ,string apiKey, string serverUrl, string modelName, string startPrompt)
+    private void Init(string name ,string apiKey, string serverUrl, string modelName, string startPrompt)
     {
         _openAIClient = new OpenAIClient(new ApiKeyCredential(apiKey), new OpenAIClientOptions()
         {

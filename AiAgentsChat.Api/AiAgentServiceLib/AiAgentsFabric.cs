@@ -1,17 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using AiAgentServiceLib.Agent;
 
 namespace AiAgentServiceLib
 {
     public class AiAgentsFabric
     {
-        public Dictionary<string, AiAgentService> Agents { get; set; }
+        public Dictionary<string, AiAgent> Agents { get; set; }
         public AiAgentsFabric()
         {
-            Agents = new Dictionary<string, AiAgentService>();
+            Agents = new Dictionary<string, AiAgent>();
         }
         /// <summary>
         /// Создает новый экземпляр AI-Агента с уникальным именем.
@@ -26,7 +22,7 @@ namespace AiAgentServiceLib
         {
             if (Agents.GetValueOrDefault(aiAgentName) != null)
                 return false;
-            AiAgentService aiAgentService = new AiAgentService(aiAgentName, apiKey, serverUrl, modelName, WelcomeMessage);
+            AiAgent aiAgentService = new AiAgent(aiAgentName, apiKey, serverUrl, modelName, WelcomeMessage);
             Agents.Add(aiAgentName, aiAgentService);
             return true;
         }
