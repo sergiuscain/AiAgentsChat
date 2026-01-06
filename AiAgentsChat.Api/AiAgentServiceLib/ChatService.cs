@@ -160,7 +160,7 @@ public class ChatService
             throw new Exception("Ошибка при попытке создать агента");
         }
     }
-    public string GetAllAgentsName()
+    public List<string> GetAllAgentsName()
     {
         return _agentsFabric.GetAllAgentsName();
     }

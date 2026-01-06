@@ -36,7 +36,7 @@ namespace AiAgentServiceLib
             return "Агента с таким именем не существует";
         }
 
-        public string GetAllAgentsName()
+        public List<string> GetAllAgentsName()
         {
             if (Agents.Count > 0)
             {
@@ -45,9 +45,9 @@ namespace AiAgentServiceLib
                 {
                     result.Add(item.Key);
                 }
-                return string.Join("; ", result);
+                return result;  // Возвращаем список, а не строку
             }
-            return "Список агентов пуст";
+            return new List<string>();  // Возвращаем пустой список
         }
     }
 }
