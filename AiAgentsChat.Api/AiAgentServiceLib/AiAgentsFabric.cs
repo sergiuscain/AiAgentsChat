@@ -49,5 +49,17 @@ namespace AiAgentServiceLib
             }
             return new List<string>();  // Возвращаем пустой список
         }
+        public bool DeleteAgent(string agentName)
+        {
+            try
+            {
+                return Agents.Remove(agentName);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting agent {agentName}: {ex.Message}");
+                return false;
+            }
+        }
     }
 }

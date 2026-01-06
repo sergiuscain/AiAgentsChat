@@ -12,7 +12,7 @@ public class ChatService
     private readonly RabbitMQService _rabbitMQ;
     private readonly AiAgentsFabric _agentsFabric;
     private readonly ConcurrentDictionary<string, ChatSession> _activeChats;
-    private readonly ConcurrentDictionary<string, AsyncEventingBasicConsumer> _consumers;
+    private readonly ConcurrentDictionary<string, ConsumerInfo> _consumers;
     private readonly ConcurrentDictionary<string, List<Action<ChatMessage>>> _chatSubscribers = new();
 
     public ChatService(RabbitMQService rabbitMQ, AiAgentsFabric agentsFabric)
@@ -20,7 +20,8 @@ public class ChatService
         _rabbitMQ = rabbitMQ;
         _agentsFabric = agentsFabric;
         _activeChats = new ConcurrentDictionary<string, ChatSession>();
-        _consumers = new ConcurrentDictionary<string, AsyncEventingBasicConsumer>();
+        _consumers = new ConcurrentDictionary<string, ConsumerInfo>();
+        _chatSubscribers = new ConcurrentDictionary<string, List<Action<ChatMessage>>>();
     }
 
     public async Task<string> CreateChat(params string[] agentNames)
@@ -34,37 +35,38 @@ public class ChatService
             {
                 session.Participants.Add(agentName);
 
-                // Создаем очередь для каждого агента
                 var queueName = $"agent_{agentName}_{chatId}";
                 await _rabbitMQ.CreateQueue(
-                        queueName: queueName,
-                        routingKeys: new List<string>
-                        {
-                            $"{chatId}.#",
-                            $"agent.{agentName}"
-                        });
+                    queueName: queueName,
+                    routingKeys: new List<string>
+                    {
+                    $"{chatId}.#",
+                    $"agent.{agentName}"
+                    });
 
-                // Подписываем агента на сообщения
                 var consumer = await _rabbitMQ.CreateConsumerAsync(queueName);
-                consumer.ReceivedAsync += async (sender, ea) =>
+
+                // Создаем обработчик
+                AsyncEventHandler<BasicDeliverEventArgs> handler = async (sender, ea) =>
                 {
                     await ProcessMessageForAgentAsync(agentName, ea, chatId);
                 };
 
-                _consumers[queueName] = consumer;
+                // Подписываемся
+                consumer.ReceivedAsync += handler;
+
+                // Сохраняем информацию о consumer и обработчике
+                _consumers[queueName] = new ConsumerInfo
+                {
+                    Consumer = consumer,
+                    Handler = handler
+                };
             }
         }
+
         _activeChats[chatId] = session;
 
-        // Отправляем системное сообщение о создании чата
-        await _rabbitMQ.PublishMessage(new ChatMessage
-        {
-            ChatId = chatId,
-            SenderName = "System",
-            Content = $"Chat created with participants: {string.Join(", ", agentNames)}",
-            MessageType = "system"
-        }, $"{chatId}.system");
-
+        // ... остальной код без изменений
         return chatId;
     }
 
@@ -166,9 +168,13 @@ public class ChatService
     }
     public async ValueTask DisposeAsync()
     {
-        foreach (var consumer in _consumers.Values)
+        foreach (var consumerInfo in _consumers.Values)
         {
-            consumer.ReceivedAsync -= null; // Очищаем обработчики
+            // Правильно отписываемся от события
+            if (consumerInfo.Handler != null)
+            {
+                consumerInfo.Consumer.ReceivedAsync -= consumerInfo.Handler;
+            }
         }
         _consumers.Clear();
 
@@ -210,6 +216,57 @@ public class ChatService
                     catch { /* Игнорируем ошибки подписчика */ }
                 }
             }
+        }
+    }
+
+    public List<string> GetAllChats()
+    {
+        var result = _activeChats.Keys.ToList();
+        return result;
+    }
+    public bool DeleteChat(string chatId)
+    {
+        try
+        {
+            if (_activeChats.TryRemove(chatId, out var session))
+            {
+                // Очищаем подписчиков
+                _chatSubscribers.TryRemove(chatId, out _);
+
+                // Отписываемся от событий RabbitMQ
+                foreach (var consumerKey in _consumers.Keys.Where(k => k.Contains(chatId)).ToList())
+                {
+                    if (_consumers.TryRemove(consumerKey, out var consumerInfo))
+                    {
+                        // Правильно отписываемся от события
+                        if (consumerInfo.Handler != null)
+                        {
+                            consumerInfo.Consumer.ReceivedAsync -= consumerInfo.Handler;
+                        }
+                    }
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting chat {chatId}: {ex.Message}");
+            return false;
+        }
+    }
+    public bool DeleteAgent(string agentName)
+    {
+        try
+        {
+            return _agentsFabric.DeleteAgent(agentName);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting agent {agentName}: {ex.Message}");
+            return false;
         }
     }
 }
