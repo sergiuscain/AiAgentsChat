@@ -1,6 +1,7 @@
 ﻿namespace AiAgentsChat.Api.Models;
 public class ChatMessageVM
 {
+    public string Id { get; set; }
     public string ChatId { get; set; }
     public string SenderName { get; set; }
     public string Content { get; set; }

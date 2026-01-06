@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using AiAgentServiceLib;
-using AiAgentsChat.Api.Models;
+﻿using AiAgentsChat.Api.Models;
 using AiAgentsChat.Api.ViewModels;
+using AiAgentServiceLib;
+using AiAgentServiceLib.Models;
+using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace AiAgentsChat.Api.Controllers;
 [Route("api/[controller]")]
@@ -54,6 +56,7 @@ public class AiController : ControllerBase
         foreach (var chat in history)
         {
             var chatMessageVM = new ChatMessageVM();
+            chatMessageVM.Id = chat.Id;
             chatMessageVM.ChatId = chat.ChatId;
             chatMessageVM.SenderName = chat.SenderName;
             chatMessageVM.Content = chat.Content;
@@ -62,5 +65,58 @@ public class AiController : ControllerBase
             historyViewModel.Add(chatMessageVM);
         }
         return historyViewModel;
+    }
+    [HttpGet("stream/{chatId}")]
+    public async Task GetMessageStream(string chatId)
+    {
+        Response.ContentType = "text/event-stream";
+        Response.Headers.Add("Cache-Control", "no-cache");
+        Response.Headers.Add("Connection", "keep-alive");
+
+        Action<ChatMessage> onNewMessage = (message) =>
+        {
+            if (message.ChatId == chatId && !HttpContext.RequestAborted.IsCancellationRequested)
+            {
+                // Запускаем асинхронную операцию в отдельной задаче
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var json = JsonSerializer.Serialize(message);
+                        await Response.WriteAsync($"data: {json}\n\n");
+                        await Response.Body.FlushAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        // Логируем ошибки записи
+                        Console.WriteLine($"Error writing SSE: {ex.Message}");
+                    }
+                });
+            }
+        };
+        _chatService.SubscribeToChat(chatId, onNewMessage);
+        try
+        {
+            // Отправляем начальное сообщение
+            await Response.WriteAsync($"data: {{\"type\":\"connected\",\"chatId\":\"{chatId}\"}}\n\n");
+            await Response.Body.FlushAsync();
+
+            // Держим соединение открытым
+            while (!HttpContext.RequestAborted.IsCancellationRequested)
+            {
+                await Task.Delay(30000);
+                await Response.WriteAsync(": keep-alive\n\n");
+                await Response.Body.FlushAsync();
+            }
+        }
+        catch (Exception ex) when (ex is TaskCanceledException || ex is OperationCanceledException)
+        {
+            // Клиент разорвал соединение - нормально
+        }
+        finally
+        {
+            _chatService.UnsubscribeFromChat(chatId, onNewMessage);
+        }
+
     }
 }

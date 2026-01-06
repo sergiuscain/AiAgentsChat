@@ -13,6 +13,7 @@ public class ChatService
     private readonly AiAgentsFabric _agentsFabric;
     private readonly ConcurrentDictionary<string, ChatSession> _activeChats;
     private readonly ConcurrentDictionary<string, AsyncEventingBasicConsumer> _consumers;
+    private readonly ConcurrentDictionary<string, List<Action<ChatMessage>>> _chatSubscribers = new();
 
     public ChatService(RabbitMQService rabbitMQ, AiAgentsFabric agentsFabric)
     {
@@ -130,6 +131,8 @@ public class ChatService
                 await _rabbitMQ.PublishMessage(message, $"agent.{participant}");
             }
         }
+        // Уведомляем всех подписчиков
+        NotifySubscribers(chatId, message);
     }
 
     public List<ChatMessage> GetChatHistory(string chatId)
@@ -172,6 +175,41 @@ public class ChatService
         if (_rabbitMQ is IAsyncDisposable disposable)
         {
             await disposable.DisposeAsync();
+        }
+    }
+    public void SubscribeToChat(string chatId, Action<ChatMessage> callback)
+    {
+        var subscribers = _chatSubscribers.GetOrAdd(chatId, id => new List<Action<ChatMessage>>());
+        lock (subscribers)
+        {
+            subscribers.Add(callback);
+        }
+    }
+    public void UnsubscribeFromChat(string chatId, Action<ChatMessage> callback)
+    {
+        if (_chatSubscribers.TryGetValue(chatId, out var subscribers))
+        {
+            lock (subscribers)
+            {
+                subscribers.Remove(callback);
+            }
+        }
+    }
+    private void NotifySubscribers(string chatId, ChatMessage message)
+    {
+        if (_chatSubscribers.TryGetValue(chatId, out var subscribers))
+        {
+            lock (subscribers)
+            {
+                foreach (var callback in subscribers)
+                {
+                    try
+                    {
+                        callback(message);
+                    }
+                    catch { /* Игнорируем ошибки подписчика */ }
+                }
+            }
         }
     }
 }
