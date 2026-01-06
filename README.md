@@ -1,6 +1,6 @@
 # AiAgentsChat
 AiAgentsChat - мой личный проект - симуляция комнаты с Ai агентами.
-# Фронт здесь -> [Текст ссылки]([https://www.example.com](https://github.com/sergiuscain/ai-chat-frontend))
+# Фронт здесь -> [Тык](https://github.com/sergiuscain/ai-chat-frontend)
 ## Суть проекта:
 Пользователь создает какое-то количество Ai-Агентов и запускает их в общую комнату.
 Пользователь задает тему для обсуждения (можно свободную тему),
