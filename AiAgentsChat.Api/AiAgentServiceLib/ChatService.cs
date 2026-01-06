@@ -138,40 +138,41 @@ public class ChatService
     {
         if (string.IsNullOrWhiteSpace(response))
             return false;
-
-        // 1. Приведение к нижнему регистру только один раз
-        var lower = response.ToLowerInvariant();
-
-        // 2. Недопустимые фразы (регулярный поиск, чтобы поймать любые варианты)
-        var invalidPhrases = new[]
-        {
-        @"не\s+отвечаю",
-        @"не\s+отвечает",
-        @"ошибка[:\s]*",
-        @"error[:\s]*",
-        @"service request failed",
-        @"bad request",
-        @"status:\s*400",
-        "non666non",
-    };
-
-        foreach (var pattern in invalidPhrases)
-        {
-            if (Regex.IsMatch(lower, pattern))
-                return false;
-        }
-
-        // 3. Минимальная длина – можно менять в зависимости от требований
-        const int minLength = 2;   // 2 символов уже считается «коротким», но допустимым
-        if (response.Trim().Length < minLength)
+        if (response.Contains("non666non"))
             return false;
+    //    // 1. Приведение к нижнему регистру только один раз
+    //    //var lower = response.ToLowerInvariant();
 
-        // 4. Проверка таблицы через регулярное выражение (первый столбец начинается с |, вторые — ---)
-        var tablePattern = @"^\s*\|\s*.+\n(?:\s*\|\s*-+\s*\|.*\n?)+";
-        if (Regex.IsMatch(response, tablePattern))
-            return false;
+    //    // 2. Недопустимые фразы (регулярный поиск, чтобы поймать любые варианты)
+    //    var invalidPhrases = new[]
+    //    {
+    //    @"не\s+отвечаю",
+    //    @"не\s+отвечает",
+    //    @"ошибка[:\s]*",
+    //    @"error[:\s]*",
+    //    @"service request failed",
+    //    @"bad request",
+    //    @"status:\s*400",
+    //    "non666non",
+    //};
 
-        // 5. Любой другой случай считается валидным
+    //    foreach (var pattern in invalidPhrases)
+    //    {
+    //        if (Regex.IsMatch(lower, pattern))
+    //            return false;
+    //    }
+
+    //    // 3. Минимальная длина – можно менять в зависимости от требований
+    //    const int minLength = 2;   // 2 символов уже считается «коротким», но допустимым
+    //    if (response.Trim().Length < minLength)
+    //        return false;
+
+    //    // 4. Проверка таблицы через регулярное выражение (первый столбец начинается с |, вторые — ---)
+    //    var tablePattern = @"^\s*\|\s*.+\n(?:\s*\|\s*-+\s*\|.*\n?)+";
+    //    if (Regex.IsMatch(response, tablePattern))
+    //        return false;
+
+    //    // 5. Любой другой случай считается валидным
         return true;
     }
 
