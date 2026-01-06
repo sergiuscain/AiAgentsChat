@@ -29,6 +29,22 @@ public class AiController : ControllerBase
     {
         return Ok(_chatService.CreateAgent(AiAgentName));
     }
+    [HttpDelete("DeleteAgent")]
+    public IActionResult DeleteAgent(string agentName)
+    {
+        try
+        {
+            // Нужно добавить метод DeleteAgent в ChatService
+            var result = _chatService.DeleteAgent(agentName);
+            if (result)
+                return Ok(new { Success = true, Message = $"Agent '{agentName}' deleted successfully" });
+            return BadRequest(new { Success = false, Message = $"Agent '{agentName}' not found" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { Success = false, Message = ex.Message });
+        }
+    }
     [HttpGet("GetAllAgentsName")]
     public IActionResult GetAllAgentsName()
     {
@@ -132,22 +148,6 @@ public class AiController : ControllerBase
         {
             var chats = _chatService.GetAllChats();
             return Ok(chats);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { Success = false, Message = ex.Message });
-        }
-    }
-    [HttpDelete("DeleteAgent")]
-    public IActionResult DeleteAgent(string agentName)
-    {
-        try
-        {
-            // Нужно добавить метод DeleteAgent в ChatService
-            var result = _chatService.DeleteAgent(agentName);
-            if (result)
-                return Ok(new { Success = true, Message = $"Agent '{agentName}' deleted successfully" });
-            return BadRequest(new { Success = false, Message = $"Agent '{agentName}' not found" });
         }
         catch (Exception ex)
         {
