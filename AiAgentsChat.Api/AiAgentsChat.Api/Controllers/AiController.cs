@@ -29,6 +29,22 @@ public class AiController : ControllerBase
     {
         return Ok(_chatService.CreateAgent(AiAgentName));
     }
+    [HttpDelete("DeleteAgent")]
+    public IActionResult DeleteAgent(string agentName)
+    {
+        try
+        {
+            // Нужно добавить метод DeleteAgent в ChatService
+            var result = _chatService.DeleteAgent(agentName);
+            if (result)
+                return Ok(new { Success = true, Message = $"Agent '{agentName}' deleted successfully" });
+            return BadRequest(new { Success = false, Message = $"Agent '{agentName}' not found" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { Success = false, Message = ex.Message });
+        }
+    }
     [HttpGet("GetAllAgentsName")]
     public IActionResult GetAllAgentsName()
     {
@@ -85,7 +101,7 @@ public class AiController : ControllerBase
                     {
                         var jsonOptions = new JsonSerializerOptions
                         {
-                            PropertyNamingPolicy = JsonNamingPolicy.CamelCase, // Это важно!
+                            PropertyNamingPolicy = JsonNamingPolicy.CamelCase, 
                             WriteIndented = false
                         };
                         var json = JsonSerializer.Serialize(message, jsonOptions);
@@ -124,5 +140,33 @@ public class AiController : ControllerBase
             _chatService.UnsubscribeFromChat(chatId, onNewMessage);
         }
 
+    }
+    [HttpGet("GetAllChats")]
+    public IActionResult GetAllChats()
+    {
+        try
+        {
+            var chats = _chatService.GetAllChats();
+            return Ok(chats);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { Success = false, Message = ex.Message });
+        }
+    }
+    [HttpDelete("DeleteChat/{chatId}")]
+    public IActionResult DeleteChat(string chatId)
+    {
+        try
+        {
+            var result = _chatService.DeleteChat(chatId);
+            if (result)
+                return Ok(new { Success = true, Message = $"Chat '{chatId}' deleted successfully" });
+            return BadRequest(new { Success = false, Message = $"Chat '{chatId}' not found" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { Success = false, Message = ex.Message });
+        }
     }
 }
