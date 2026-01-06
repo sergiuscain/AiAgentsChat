@@ -32,7 +32,8 @@ public class AiController : ControllerBase
     [HttpGet("GetAllAgentsName")]
     public IActionResult GetAllAgentsName()
     {
-        return Ok(_chatService.GetAllAgentsName());
+        var agents = _chatService.GetAllAgentsName();
+        return Ok(agents);  
     }
     [HttpPost("CreateChat")]
     public async Task<IActionResult> CreateChat([FromBody] CreateChatRequest request)
@@ -51,20 +52,16 @@ public class AiController : ControllerBase
     public List<ChatMessageVM> GetChatMessage(string chatId)
     {
         var history = _chatService.GetChatHistory(chatId);
-        // Здесь надо будет реализовать работу через автомаппер
-        var historyViewModel = new List<ChatMessageVM>();
-        foreach (var chat in history)
-        {
-            var chatMessageVM = new ChatMessageVM();
-            chatMessageVM.Id = chat.Id;
-            chatMessageVM.ChatId = chat.ChatId;
-            chatMessageVM.SenderName = chat.SenderName;
-            chatMessageVM.Content = chat.Content;
-            chatMessageVM.MessageType = chat.MessageType;
 
-            historyViewModel.Add(chatMessageVM);
-        }
-        return historyViewModel;
+        return history.Select(chat => new ChatMessageVM
+        {
+            Id = chat.Id,
+            ChatId = chat.ChatId,
+            SenderName = chat.SenderName,
+            Content = chat.Content,
+            MessageType = chat.MessageType,
+            Timestamp = chat.Timestamp  // Копируем timestamp!
+        }).ToList();
     }
     [HttpGet("stream/{chatId}")]
     public async Task GetMessageStream(string chatId)
@@ -77,12 +74,21 @@ public class AiController : ControllerBase
         {
             if (message.ChatId == chatId && !HttpContext.RequestAborted.IsCancellationRequested)
             {
+                if (message.Timestamp == default)
+                {
+                    message.Timestamp = DateTime.UtcNow;
+                }
                 // Запускаем асинхронную операцию в отдельной задаче
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        var json = JsonSerializer.Serialize(message);
+                        var jsonOptions = new JsonSerializerOptions
+                        {
+                            PropertyNamingPolicy = JsonNamingPolicy.CamelCase, 
+                            WriteIndented = false
+                        };
+                        var json = JsonSerializer.Serialize(message, jsonOptions);
                         await Response.WriteAsync($"data: {json}\n\n");
                         await Response.Body.FlushAsync();
                     }
