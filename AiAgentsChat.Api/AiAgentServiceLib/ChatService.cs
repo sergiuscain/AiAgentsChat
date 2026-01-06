@@ -4,6 +4,7 @@ using RabbitMQS;
 using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace AiAgentServiceLib;
@@ -84,27 +85,96 @@ public class ChatService
             // Получаем историю чата
             if (_activeChats.TryGetValue(chatId, out var session))
             {
-                // Формируем промпт для AI агента с историей диалога
-                var history = string.Join("\n",
-                    session.MessageHistory
-                        .Where(m => m.MessageType == "text")
-                        .Select(m => $"{m.SenderName}: {m.Content}"));
+                // Берем только последние N сообщений (например, 10)
+                var recentMessages = session.MessageHistory
+                    .Where(m => m.MessageType == "text")
+                    .TakeLast(10) // Ограничиваем историю
+                    .ToList();
 
-                var prompt = $"Continue the conversation. Previous messages:\n{history}\n\n{message.SenderName}: {message.Content}\n\nYour response:";
+                // Исключаем сообщения текущего агента из истории чтобы он не отвечал на себя
+                var filteredHistory = recentMessages
+                    .Where(m => m.SenderName != agentName)
+                    .ToList();
+
+                // Формируем промпт с четкой инструкцией
+                var historyText = string.Join("\n",
+                    filteredHistory.Select(m => $"{m.SenderName}: {m.Content}"));
+
+                var prompt = $@"
+Ты - AI агент по имени {agentName}. Ты находишься в групповом чате с другими агентами.
+
+Правила поведения:
+1. Отвечай ТОЛЬКО если обращаются к тебе напрямую или если твой ответ действительно важен
+2. Не повторяй то, что уже сказали другие агенты
+3. Если вопрос задан всем, подожди немного - возможно, другой агент уже ответит
+4. Будь кратким и по делу
+5. Учитывай контекст предыдущих сообщений
+6. Если ты не отвечаешь, пиши - 'non666non'  такое сообщение автоматически отфильтруется
+7. Ты можешь общаться с другими участниками чата, для этого прямо указывай, к кому ты образаешься
+Запомни эти правила и следуй им всегда.
+
+История последних сообщений:
+{historyText}
+
+Текущее сообщение от {message.SenderName}: {message.Content}
+
+Твой ({agentName}) ответ (только если он полезен и уникален, иначе не отвечай):";
 
                 // Получаем ответ от агента
                 var response = await _agentsFabric.PostPromptAsync(prompt, agentName);
 
-                // Отправляем ответ в чат
-                await SendMessageAsync(chatId, agentName, response);
+                // Отправляем ответ в чат, только если он валиден!!
+                if(IsValidResponse(response, agentName))
+                    await SendMessageAsync(chatId, agentName, response);
             }
         }
         catch (Exception ex)
         {
-            // Логируем ошибку
             Console.WriteLine($"Error processing message for agent {agentName}: {ex.Message}");
         }
     }
+
+    private bool IsValidResponse(string response, string agentName)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            return false;
+
+        // 1. Приведение к нижнему регистру только один раз
+        var lower = response.ToLowerInvariant();
+
+        // 2. Недопустимые фразы (регулярный поиск, чтобы поймать любые варианты)
+        var invalidPhrases = new[]
+        {
+        @"не\s+отвечаю",
+        @"не\s+отвечает",
+        @"ошибка[:\s]*",
+        @"error[:\s]*",
+        @"service request failed",
+        @"bad request",
+        @"status:\s*400",
+        "non666non",
+    };
+
+        foreach (var pattern in invalidPhrases)
+        {
+            if (Regex.IsMatch(lower, pattern))
+                return false;
+        }
+
+        // 3. Минимальная длина – можно менять в зависимости от требований
+        const int minLength = 2;   // 2 символов уже считается «коротким», но допустимым
+        if (response.Trim().Length < minLength)
+            return false;
+
+        // 4. Проверка таблицы через регулярное выражение (первый столбец начинается с |, вторые — ---)
+        var tablePattern = @"^\s*\|\s*.+\n(?:\s*\|\s*-+\s*\|.*\n?)+";
+        if (Regex.IsMatch(response, tablePattern))
+            return false;
+
+        // 5. Любой другой случай считается валидным
+        return true;
+    }
+
 
     public async Task SendMessageAsync(string chatId, string senderName, string content)
     {
