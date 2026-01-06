@@ -1,4 +1,5 @@
 using AiAgentServiceLib;
+using RabbitMQS;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +10,8 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<AiAgentsFabric>();
+builder.Services.AddSingleton<ChatService>();
+builder.Services.AddSingleton<RabbitMQService>();
 
 var app = builder.Build();
 
