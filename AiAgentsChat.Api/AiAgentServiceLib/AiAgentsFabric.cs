@@ -22,8 +22,8 @@ namespace AiAgentServiceLib
         {
             if (Agents.GetValueOrDefault(aiAgentName) != null)
                 return false;
-            AiAgent aiAgentService = new AiAgent(aiAgentName, apiKey, serverUrl, modelName, WelcomeMessage);
-            Agents.Add(aiAgentName, aiAgentService);
+            AiAgent aiAgent = new AiAgent(aiAgentName, apiKey, serverUrl, modelName, WelcomeMessage);
+            Agents.Add(aiAgentName, aiAgent);
             return true;
         }
         public async Task<string> PostPromptAsync(string prompt, string aiAgentName)
@@ -34,6 +34,20 @@ namespace AiAgentServiceLib
                 return await agent.PostPromptAsync(prompt);
             }
             return "Агента с таким именем не существует";
+        }
+
+        public List<string> GetAllAgentsName()
+        {
+            if (Agents.Count > 0)
+            {
+                var result = new List<string>();
+                foreach (var item in Agents)
+                {
+                    result.Add(item.Key);
+                }
+                return result;  // Возвращаем список, а не строку
+            }
+            return new List<string>();  // Возвращаем пустой список
         }
     }
 }
